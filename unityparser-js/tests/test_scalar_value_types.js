@@ -1,5 +1,6 @@
 const fs = require("fs");
 const yaml = require("js-yaml");
+
 class TestScalarValueTypes {
   test_types(fixtures) {
     let base_file_path = fixtures["MultipleTypesDoc.asset"];
@@ -13,7 +14,7 @@ class TestScalarValueTypes {
       let split_attr = attr.split("_");
       if (split_attr[0] === "scalar") {
         let expected_type = split_attr[1];
-        assert(typeof attr_value === expected_type);
+        expect(typeof attr_value).toBe(expected_type);
         count_map[expected_type]++;
       } else if (split_attr[0] === "map") {
         for (let k in attr_value) {
@@ -27,9 +28,9 @@ class TestScalarValueTypes {
       evaluate_type(attribute, multi_types_attr_map);
     }
 
-    assert(count_map["int"] === 4);
-    assert(count_map["str"] === 8);
-    assert(count_map["float"] === 6);
+    expect(count_map["int"]).toBe(4);
+    expect(count_map["str"]).toBe(8);
+    expect(count_map["float"]).toBe(6);
   }
 
   test_sum_int_type(fixtures) {
@@ -38,6 +39,8 @@ class TestScalarValueTypes {
     let multi_types = doc.entry;
 
     multi_types.scalar_int_001 += 1;
-    assert(multi_types.scalar_int_001 === 16);
+    expect(multi_types.scalar_int_001).toBe(16);
   }
 }
+
+module.exports = TestScalarValueTypes;
