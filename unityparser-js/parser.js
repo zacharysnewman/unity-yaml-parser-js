@@ -1,72 +1,111 @@
-from yaml.events import StreamEndEvent, DocumentStartEvent, MappingEndEvent
-from yaml.parser import Parser as YamlParser, ParserError
-from yaml.tokens import DocumentEndToken, StreamEndToken, DocumentStartToken, StreamStartToken, KeyToken, ValueToken, BlockEndToken
+const {
+  Parser: YamlParser,
+  types: {
+    Type,
+    FAILSAFE_SCHEMA,
+    JSON_SCHEMA,
+    CORE_SCHEMA,
+    DEFAULT_SAFE_SCHEMA,
+    DEFAULT_FULL_SCHEMA,
+  },
+  exceptions: { MarkedYAMLError, YAMLException },
+  tokens: { StreamEndToken, BlockEndToken },
+  events: { StreamEndEvent, DocumentStartEvent, MappingEndEvent },
+} = require("js-yaml");
 
+class Parser extends YamlParser {
+  constructor() {
+    super();
+    this.parsing_inverted_scalar = false;
+  }
 
-class Parser(YamlParser):
+  parse_document_start() {
+    while (this.check_token(BlockEndToken)) {
+      this.get_token();
+    }
 
-    def __init__(self):
-        super(Parser, self).__init__()
-        self.parsing_inverted_scalar = False
+    if (!this.check_token(StreamEndToken)) {
+      const token = this.peek_token();
+      const start_mark = token.start_mark;
 
-    def parse_document_start(self):
+      let version, tags;
+      if (this.check_prev_token(StreamEndToken)) {
+        [version, tags] = this.process_directives();
+      } else {
+        version = this.yaml_version;
+        tags = this.tag_handles ? { ...this.tag_handles } : null;
+      }
+      if (!this.check_token(BlockEndToken)) {
+        throw new MarkedYAMLError(
+          null,
+          null,
+          `expected '<document start>', but found ${this.peek_token().id}`,
+          this.peek_token().start_mark
+        );
+      }
+      token = this.get_token();
+      const end_mark = token.end_mark;
+      const event = new DocumentStartEvent(
+        start_mark,
+        end_mark,
+        true,
+        version,
+        tags
+      );
 
-        # Parse any extra document end indicators.
-        while self.check_token(DocumentEndToken):
-            self.get_token()
+      this.states.push(this.parse_document_end);
+      this.state = this.parse_document_content;
+    } else {
+      const token = this.get_token();
+      const event = new StreamEndEvent(token.start_mark, token.end_mark);
 
-        # Parse an explicit document.
-        if not self.check_token(StreamEndToken):
-            token = self.peek_token()
-            start_mark = token.start_mark
-            # UNITY: only process directives(version and tags) on the first document
-            if self.check_prev_token(StreamStartToken):
-                version, tags = self.process_directives()
-            else:
-                version, tags = self.yaml_version, self.tag_handles.copy() if self.tag_handles else None
-            if not self.check_token(DocumentStartToken):
-                raise ParserError(None, None,
-                                  "expected '<document start>', but found %r"
-                                  % self.peek_token().id,
-                                  self.peek_token().start_mark)
-            token = self.get_token()
-            end_mark = token.end_mark
-            event = DocumentStartEvent(start_mark, end_mark,
-                                       explicit=True, version=version, tags=tags)
-            self.states.append(self.parse_document_end)
-            self.state = self.parse_document_content
-        else:
-            # Parse the end of the stream.
-            token = self.get_token()
-            event = StreamEndEvent(token.start_mark, token.end_mark)
-            assert not self.states
-            assert not self.marks
-            self.state = None
-        return event
+      if (this.states.length || this.marks.length) {
+        throw new YAMLException("Invalid state");
+      }
 
-    def parse_block_mapping_key(self):
-        if self.check_token(KeyToken):
-            token = self.get_token()
-            if not self.check_token(KeyToken, ValueToken, BlockEndToken):
-                self.states.append(self.parse_block_mapping_value)
-                return self.parse_block_node_or_indentless_sequence()
-            else:
-                self.state = self.parse_block_mapping_value
-                return self.process_empty_scalar(token.end_mark)
-        # UNITY: https://github.com/socialpoint-labs/unity-yaml-parser/issues/32
-        if not self.check_token(BlockEndToken) and not self.parsing_inverted_scalar:
-            if self.check_token(ValueToken):
-                self.get_token()
-                self.parsing_inverted_scalar = True
-                self.states.append(self.parse_block_mapping_value)
-                return self.parse_block_node_or_indentless_sequence()
-            else:
-                token = self.peek_token()
-                raise ParserError("while parsing a block mapping", self.marks[-1],
-                        "expected <block end>, but found %r" % token.id, token.start_mark)
-        token = self.get_token()
-        event = MappingEndEvent(token.start_mark, token.end_mark)
-        self.state = self.states.pop()
-        self.marks.pop()
-        self.parsing_inverted_scalar = False
-        return event
+      this.state = null;
+    }
+
+    return event;
+  }
+
+  parse_block_mapping_key() {
+    if (this.check_token(BlockEndToken)) {
+      const token = this.get_token();
+
+      if (!this.check_token(BlockEndToken)) {
+        this.states.push(this.parse_block_mapping_value);
+        return this.parse_block_node_or_indentless_sequence();
+      } else {
+        this.state = this.parse_block_mapping_value;
+        return this.process_empty_scalar(token.end_mark);
+      }
+    }
+
+    if (!this.check_token(BlockEndToken) && !this.parsing_inverted_scalar) {
+      if (this.check_token(BlockEndToken)) {
+        this.get_token();
+        this.parsing_inverted_scalar = true;
+        this.states.push(this.parse_block_mapping_value);
+        return this.parse_block_node_or_indentless_sequence();
+      } else {
+        const token = this.peek_token();
+        throw new MarkedYAMLError(
+          "while parsing a block mapping",
+          this.marks[this.marks.length - 1],
+          `expected <block end>, but found ${token.id}`,
+          token.start_mark
+        );
+      }
+    }
+
+    const token = this.get_token();
+    const event = new MappingEndEvent(token.start_mark, token.end_mark);
+    this.state = this.states.pop();
+    this.marks.pop();
+    this.parsing_inverted_scalar = false;
+    return event;
+  }
+}
+
+module.exports = Parser;

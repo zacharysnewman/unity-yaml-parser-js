@@ -1,11 +1,17 @@
-from yaml.representer import Representer as YamlRepresenter
+const yaml = require("js-yaml");
 
-
-class Representer(YamlRepresenter):
-
-    def __init__(self, default_style=None, default_flow_style=False,
-                 sort_keys=True, register=None):
-        super(Representer, self).__init__(default_style=default_style,
-                                          default_flow_style=default_flow_style,
-                                          sort_keys=sort_keys)
-        self.register = register
+class Representer extends yaml.Dumper {
+  constructor(
+    default_style = null,
+    default_flow_style = false,
+    sort_keys = true,
+    register = null
+  ) {
+    super({
+      styles: default_style,
+      flowLevel: default_flow_style ? -1 : 4,
+      sortKeys: sort_keys,
+    });
+    this.register = register;
+  }
+}

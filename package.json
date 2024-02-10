@@ -15,5 +15,17 @@
   "bugs": {
     "url": "https://github.com/zacharysnewman/unity-yaml-parser-js/issues"
   },
-  "homepage": "https://github.com/zacharysnewman/unity-yaml-parser-js#readme"
+  "homepage": "https://github.com/zacharysnewman/unity-yaml-parser-js#readme",
+  "dependencies": {
+    "async": "^3.2.5",
+    "async-lock": "^1.4.1",
+    "collections": "^5.1.13",
+    "diff": "^5.1.0",
+    "glob": "^10.3.10",
+    "js-yaml": "^4.1.0",
+    "lodash": "^4.17.21",
+    "minimist": "^1.2.8",
+    "regex": "^0.1.1",
+    "tmp": "^0.2.1"
+  }
 }

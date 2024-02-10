@@ -1,62 +1,57 @@
-import re
+const yaml = require("js-yaml");
+const regex = require("regex");
 
-from yaml.resolver import BaseResolver
+class Resolver extends yaml.Type {
+  constructor() {
+    super("tag:yaml.org,2002:str", {
+      kind: "scalar",
+      resolve: (data) => typeof data === "string",
+      construct: (data) => data,
+      instanceOf: String,
+      represent: (data) => data,
+    });
+  }
+}
+const FLOAT_REGEX = regex(
+  "^(?:[-+]?(?:0|[1-9][0-9]*).(?:[1-9]|[0-9][0-9]*[1-9])?)$"
+);
+const INT_REGEX = regex("^(?:[-+]?(?:0|[1-9][0-9]*))$");
+const NULL_REGEX = regex("^(?: )$");
+const YAML_REGEX = regex("^(?:!|&|*)$");
 
+const floatResolver = new Resolver();
+floatResolver.kind = "scalar";
+floatResolver.resolve = (data) => FLOAT_REGEX.test(data);
+floatResolver.construct = (data) => parseFloat(data);
+floatResolver.instanceOf = Number;
+floatResolver.represent = (data) => data.toString();
 
-class Resolver(BaseResolver):
-    """
-    UNITY: Resolver will convert EVERYTHING to str but for empty values which are translated to None.
-    This is the safest approach as Unity doesn't follow YAML value conventions.
-    """
-    pass
+const intResolver = new Resolver();
+intResolver.kind = "scalar";
+intResolver.resolve = (data) => INT_REGEX.test(data);
+intResolver.construct = (data) => parseInt(data, 10);
+intResolver.instanceOf = Number;
+intResolver.represent = (data) => data.toString();
 
+const nullResolver = new Resolver();
+nullResolver.kind = "scalar";
+nullResolver.resolve = (data) => NULL_REGEX.test(data);
+nullResolver.construct = () => null;
+nullResolver.instanceOf = null;
+nullResolver.represent = () => "";
 
-# Resolver.add_implicit_resolver(
-#     'tag:yaml.org,2002:bool',
-#     re.compile(r'''^(?:yes|Yes|YES|no|No|NO
-#                     |true|True|TRUE|false|False|FALSE
-#                     |on|On|ON|off|Off|OFF)$''', re.X),
-#     list('yYnNtTfFoO'))
+const yamlResolver = new Resolver();
+yamlResolver.kind = "scalar";
+yamlResolver.resolve = (data) => YAML_REGEX.test(data);
+yamlResolver.construct = (data) => data;
+yamlResolver.instanceOf = String;
+yamlResolver.represent = (data) => data;
 
-Resolver.add_implicit_resolver(
-    'tag:yaml.org,2002:float',
-    re.compile(r'''^(?:[-+]?(?:0|[1-9][0-9]*)\.(?:[1-9]|[0-9][0-9]*[1-9])?)$''', re.X),
-    list('-+0123456789.'))
+const SCHEMA = yaml.DEFAULT_SCHEMA.extend([
+  floatResolver,
+  intResolver,
+  nullResolver,
+  yamlResolver,
+]);
 
-Resolver.add_implicit_resolver(
-    'tag:yaml.org,2002:int',
-    # UNITY: Restrict to simple integer values
-    re.compile(r'''^(?:[-+]?(?:0|[1-9][0-9]*))$''', re.X),
-    list('-+0123456789'))
-
-# Resolver.add_implicit_resolver(
-#     'tag:yaml.org,2002:merge',
-#     re.compile(r'^(?:<<)$'),
-#     ['<'])
-
-Resolver.add_implicit_resolver(
-    'tag:yaml.org,2002:null',
-    # UNITY: Allow only empty values as null
-    re.compile(r'''^(?: )$''', re.X),
-    [''])
-
-# Resolver.add_implicit_resolver(
-#     'tag:yaml.org,2002:timestamp',
-#     re.compile(r'''^(?:[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]
-#                     |[0-9][0-9][0-9][0-9] -[0-9][0-9]? -[0-9][0-9]?
-#                      (?:[Tt]|[ \t]+)[0-9][0-9]?
-#                      :[0-9][0-9] :[0-9][0-9] (?:\.[0-9]*)?
-#                      (?:[ \t]*(?:Z|[-+][0-9][0-9]?(?::[0-9][0-9])?))?)$''', re.X),
-#     list('0123456789'))
-
-# Resolver.add_implicit_resolver(
-#     'tag:yaml.org,2002:value',
-#     re.compile(r'^(?:=)$'),
-#     ['='])
-
-# The following resolver is only for documentation purposes. It cannot work
-# because plain scalars cannot start with '!', '&', or '*'.
-Resolver.add_implicit_resolver(
-    'tag:yaml.org,2002:yaml',
-    re.compile(r'^(?:!|&|\*)$'),
-    list('!&*'))
+module.exports = { SCHEMA };

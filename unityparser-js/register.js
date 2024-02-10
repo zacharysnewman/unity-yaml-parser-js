@@ -1,16 +1,23 @@
-class UnityScalarRegister:
-    def __init__(self):
-        self.map = {}
+class UnityScalarRegister {
+  constructor() {
+    this.map = new Map();
+  }
 
-    def pop(self, value):
-        ptr_id = id(value)
-        style = self.map.get(ptr_id, None)
-        if style is not None:
-            style = style[1]
-            del self.map[ptr_id]
-        return style
+  pop(value) {
+    let ptr_id = value;
+    let style = this.map.get(ptr_id);
+    if (style !== undefined) {
+      style = style[1];
+      this.map.delete(ptr_id);
+    }
+    return style;
+  }
 
-    def set(self, value, style):
-        ptr_id = id(value)
-        assert ptr_id not in self.map, "Duplicated ptr_id ({}) in UnityScalarRegister".format(ptr_id)
-        self.map[ptr_id] = (value, style)
+  set(value, style) {
+    let ptr_id = value;
+    if (this.map.has(ptr_id)) {
+      throw new Error(`Duplicated ptr_id (${ptr_id}) in UnityScalarRegister`);
+    }
+    this.map.set(ptr_id, [value, style]);
+  }
+}

@@ -1,5 +1,5 @@
 const yaml = require("js-yaml");
-const collections = require("collections-js");
+const collections = require("collections");
 const OrderedFlowDict = require("./constants").OrderedFlowDict;
 class uniqstr extends String {
   constructor(content) {
