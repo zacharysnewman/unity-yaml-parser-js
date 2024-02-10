@@ -1,32 +1,38 @@
-from yaml.composer import Composer as YamlComposer, ComposerError
+const yaml = require("js-yaml");
+class Composer extends yaml.Composer {
+  compose_document() {
+    // Drop the DOCUMENT-START event.
+    this.get_event();
 
+    // UNITY: used to store data after the anchor
+    this.extra_anchor_data = {};
 
-class Composer(YamlComposer):
+    // Compose the root node.
+    const node = this.compose_node(null, null);
 
-    def compose_document(self):
-        # Drop the DOCUMENT-START event.
-        self.get_event()
+    // Drop the DOCUMENT-END event.
+    this.get_event();
 
-        # UNITY: used to store data after the anchor
-        self.extra_anchor_data = {}
+    // UNITY: prevent reset anchors after document end so we can access them on constructors
+    // this.anchors = {};
+    return node;
+  }
 
-        # Compose the root node.
-        node = self.compose_node(None, None)
+  get_anchor_from_node(node) {
+    for (let k in this.anchors) {
+      if (node === this.anchors[k]) {
+        return k;
+      }
+    }
+    throw new yaml.YAMLException("Expected anchor to be present for node");
+  }
 
-        # Drop the DOCUMENT-END event.
-        self.get_event()
+  get_extra_anchor_data_from_node(anchor) {
+    if (this.extra_anchor_data.hasOwnProperty(anchor)) {
+      return this.extra_anchor_data[anchor];
+    }
+    return "";
+  }
+}
 
-        # UNITY: prevent reset anchors after document end so we can access them on constructors
-        # self.anchors = {}
-        return node
-
-    def get_anchor_from_node(self, node):
-        for k, v in self.anchors.items():
-            if node == v:
-                return k
-        raise ComposerError("Expected anchor to be present for node")
-
-    def get_extra_anchor_data_from_node(self, anchor):
-        if anchor in self.extra_anchor_data:
-            return self.extra_anchor_data[anchor]
-        return ''
+module.exports = Composer;

@@ -1,26 +1,20 @@
-from pathlib import Path
+const fs = require("fs");
+const path = require("path");
+const { UnityClassIdMap } = require("./UnityClassIdMap");
+let fixtures = () => {
+  let fixturesFolder = path.join(__dirname, "fixtures");
+  let fixturesDict = {};
+  fs.readdirSync(fixturesFolder).forEach((file) => {
+    fixturesDict[file] = path.resolve(fixturesFolder, file);
+  });
+  return fixturesDict;
+};
 
-import pytest
+let resetUnityClassIdMap = () => {
+  UnityClassIdMap.reset();
+};
 
-from unityparser.constants import UnityClassIdMap
-
-
-@pytest.fixture(scope='session')
-def fixtures():
-    """
-    :return: Available fixtures. Key is the name of the file, value the path to it.
-    :rtype: Dict[str,str]
-    """
-    fixtures_folder = Path(__file__).parent / Path('fixtures')
-    fixtures_dict = dict(map(lambda x: (x.name, str(x.resolve())), fixtures_folder.rglob('*')))
-    yield fixtures_dict
-
-
-@pytest.fixture(scope='function', autouse=True)
-def reset_unity_class_id_map():
-    """
-    Provide a clean cache map for every run
-    :return:
-    :rtype:
-    """
-    UnityClassIdMap.reset()
+module.exports = {
+  fixtures,
+  resetUnityClassIdMap,
+};

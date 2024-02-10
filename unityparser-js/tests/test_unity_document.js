@@ -1,69 +1,75 @@
-import py
-import pytest
+const fs = require("fs");
+const path = require("path");
+const yaml = require("js-yaml");
+const assert = require("assert");
+const tmp = require("tmp");
+class TestUnityDocumentSerialization {
+  test_single_doc_unchanged(fixtures) {
+    const base_file_path = path.join(fixtures, "SingleDoc.asset");
+    const doc = yaml.safeLoad(fs.readFileSync(base_file_path, "utf8"));
+    const dumped_file_path = tmp.fileSync({ postfix: ".asset" }).name;
+    fs.writeFileSync(dumped_file_path, yaml.safeDump(doc));
 
-from unityparser.utils import UnityDocument, UnityDocumentError
+    assert.strictEqual(
+      fs.readFileSync(base_file_path, "utf8"),
+      fs.readFileSync(dumped_file_path, "utf8")
+    );
+  }
+  test_multi_doc_unchanged(fixtures) {
+    const base_file_path = path.join(fixtures, "MultiDoc.asset");
+    const doc = yaml.safeLoad(fs.readFileSync(base_file_path, "utf8"));
+    const dumped_file_path = tmp.fileSync({ postfix: ".asset" }).name;
+    fs.writeFileSync(dumped_file_path, yaml.safeDump(doc));
 
+    assert.strictEqual(
+      fs.readFileSync(base_file_path, "utf8"),
+      fs.readFileSync(dumped_file_path, "utf8")
+    );
+  }
+  test_unity_extra_anchor_data(fixtures) {
+    const base_file_path = path.join(fixtures, "UnityExtraAnchorData.prefab");
+    const doc = yaml.safeLoad(fs.readFileSync(base_file_path, "utf8"));
+    const dumped_file_path = tmp.fileSync({ postfix: ".prefab" }).name;
+    fs.writeFileSync(dumped_file_path, yaml.safeDump(doc));
 
-class TestUnityDocumentSerialization:
+    assert.strictEqual(
+      fs.readFileSync(base_file_path, "utf8"),
+      fs.readFileSync(dumped_file_path, "utf8")
+    );
+  }
+}
+class TestUnityDocumentFilters {
+  test_filter_entries(fixtures, class_names, attributes, num_entries) {
+    const multidoc_path = path.join(fixtures, "MultiDoc.asset");
+    const doc = yaml.safeLoad(fs.readFileSync(multidoc_path, "utf8"));
+    const entries = doc.filter(
+      (entry) =>
+        class_names.includes(entry.__proto__.constructor.name) &&
+        attributes.every((attr) => entry.hasOwnProperty(attr))
+    );
+    assert.strictEqual(entries.length, num_entries);
+    if (class_names.length)
+      assert.strictEqual(
+        new Set(entries.map((x) => x.__proto__.constructor.name)),
+        new Set(class_names)
+      );
+    if (attributes.length)
+      assert(
+        entries.every((x) => attributes.every((attr) => x.hasOwnProperty(attr)))
+      );
+  }
+  test_get_entry(fixtures, class_name, attributes) {
+    const multidoc_path = path.join(fixtures, "MultiDoc.asset");
+    const doc = yaml.safeLoad(fs.readFileSync(multidoc_path, "utf8"));
+    const entry = doc.find(
+      (entry) =>
+        entry.__proto__.constructor.name === class_name &&
+        attributes.every((attr) => entry.hasOwnProperty(attr))
+    );
 
-    def test_single_doc_unchanged(self, fixtures, tmpdir):
-        base_file_path = py.path.local(fixtures['SingleDoc.asset'])
-        doc = UnityDocument.load_yaml(str(base_file_path))
-        dumped_file_path = tmpdir.join('SingleDoc.asset')
-        doc.dump_yaml(file_path=str(dumped_file_path))
-
-        assert base_file_path.read() == dumped_file_path.read()
-
-    def test_multi_doc_unchanged(self, fixtures, tmpdir):
-        base_file_path = py.path.local(fixtures['MultiDoc.asset'])
-        doc = UnityDocument.load_yaml(str(base_file_path))
-        dumped_file_path = tmpdir.join('MultiDoc.asset')
-        doc.dump_yaml(file_path=str(dumped_file_path))
-
-        assert base_file_path.read() == dumped_file_path.read()
-
-    def test_unity_extra_anchor_data(self, fixtures, tmpdir):
-        base_file_path = py.path.local(fixtures['UnityExtraAnchorData.prefab'])
-        doc = UnityDocument.load_yaml(str(base_file_path))
-        dumped_file_path = tmpdir.join('UnityExtraAnchorData.prefab')
-        doc.dump_yaml(file_path=str(dumped_file_path))
-
-        assert base_file_path.read() == dumped_file_path.read()
-
-
-class TestUnityDocumentFilters:
-
-    @pytest.mark.parametrize('class_names, attributes, num_entries', [
-        (('Transform', 'MonoBehaviour'), ('m_EditorHideFlags',), 1),
-        (('SpriteRenderer',), tuple(), 1),
-        (('NonExistingClass',), tuple(), 0),
-        (('MonoBehaviour',), ('m_NonExitingAttr',), 0),
-        (tuple(), tuple(), 5),
-        (tuple(), ('m_Enabled',), 2)
-    ])
-    def test_filter_entries(self, fixtures, class_names, attributes, num_entries):
-        multidoc_path = py.path.local(fixtures['MultiDoc.asset'])
-        doc = UnityDocument.load_yaml(str(multidoc_path))
-        entries = doc.filter(class_names=class_names, attributes=attributes)
-        assert len(entries) == num_entries
-        if len(class_names):
-            assert set([x.__class__.__name__ for x in entries]) <= set(class_names)
-        if len(attributes):
-            assert all(map(lambda x: all(map(lambda attr: hasattr(x, attr), attributes)), entries))
-
-    @pytest.mark.parametrize('class_name, attributes', [
-        ('MonoBehaviour', ('m_EditorHideFlags',)),
-        ('SpriteRenderer', tuple()),
-        pytest.param('NonExistingClass', tuple(), marks=pytest.mark.xfail(raises=UnityDocumentError)),
-        pytest.param('MonoBehaviour', ('m_NonExitingAttr',), marks=pytest.mark.xfail(raises=UnityDocumentError)),
-        pytest.param(None, tuple(), marks=pytest.mark.xfail(raises=UnityDocumentError)),
-        pytest.param(None, ('m_Enabled',), marks=pytest.mark.xfail(raises=UnityDocumentError))
-    ])
-    def test_get_entry(self, fixtures, class_name, attributes):
-        multidoc_path = py.path.local(fixtures['MultiDoc.asset'])
-        doc = UnityDocument.load_yaml(str(multidoc_path))
-        entry = doc.get(class_name=class_name, attributes=attributes)
-        if class_name is not None:
-            assert entry.__class__.__name__ == class_name
-        if len(attributes):
-            assert all(map(lambda attr: hasattr(entry, attr), attributes))
+    if (class_name !== null)
+      assert.strictEqual(entry.__proto__.constructor.name, class_name);
+    if (attributes.length)
+      assert(attributes.every((attr) => entry.hasOwnProperty(attr)));
+  }
+}

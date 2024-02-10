@@ -1,29 +1,56 @@
-from yaml.serializer import Serializer as YamlSerializer
-from yaml.events import DocumentStartEvent, DocumentEndEvent
+const yaml = require("js-yaml");
+// override serializer class to store data needed
+// for extra data on anchor lines
+class Serializer extends yaml.Type {
+  constructor(
+    encoding = null,
+    explicitStart = null,
+    explicitEnd = null,
+    version = null,
+    tags = null
+  ) {
+    super();
+    this.encoding = encoding;
+    this.explicitStart = explicitStart;
+    this.explicitEnd = explicitEnd;
+    this.version = version;
+    this.tags = tags;
+    this.extraAnchorData = {};
+    this.closed = null;
+    this.serializedNodes = {};
+    this.anchors = {};
+    this.lastAnchorId = 0;
+  }
 
-# override serialzier class to store data needed
-# for extra data on anchor lines
-class Serializer(YamlSerializer):
+  serialize(node) {
+    if (this.closed === null) {
+      throw new Error("serializer is not opened");
+    } else if (this.closed) {
+      throw new Error("serializer is closed");
+    }
+    this.emit("documentStart", {
+      explicit: this.explicitStart,
+      version: this.version,
+      tags: this.tags,
+    });
+    this.anchorNode(node);
+    this.serializeNode(node, null, null);
+    this.emit("documentEnd", { explicit: this.explicitEnd });
+    this.serializedNodes = {};
+    this.anchors = {};
+    this.extraAnchorData = {};
+    this.lastAnchorId = 0;
+  }
 
-    def __init__(self, encoding=None,
-            explicit_start=None, explicit_end=None, version=None, tags=None):
-        super().__init__(encoding=encoding,
-            explicit_start=explicit_start, explicit_end=explicit_end, version=version,
-            tags=tags)
-        self.extra_anchor_data = {}
+  // placeholder for anchorNode method
+  anchorNode(node) {
+    // to be implemented
+  }
 
-    def serialize(self, node):
-        if self.closed is None:
-            raise SerializerError("serializer is not opened")
-        elif self.closed:
-            raise SerializerError("serializer is closed")
-        self.emit(DocumentStartEvent(explicit=self.use_explicit_start,
-            version=self.use_version, tags=self.use_tags))
-        self.anchor_node(node)
-        self.serialize_node(node, None, None)
-        self.emit(DocumentEndEvent(explicit=self.use_explicit_end))
-        self.serialized_nodes = {}
-        self.anchors = {}
-        self.extra_anchor_data = {}
-        self.last_anchor_id = 0
+  // placeholder for serializeNode method
+  serializeNode(node, parent, index) {
+    // to be implemented
+  }
+}
 
+module.exports = Serializer;
