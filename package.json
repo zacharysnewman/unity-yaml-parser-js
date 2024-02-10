@@ -1,6 +1,19 @@
 {
-  "dependencies": {
-    "@commitlint/config-conventional": "^16.2.1",
-    "commitlint": "^16.2.1"
-  }
+  "name": "unity-yaml-parser",
+  "version": "1.0.0",
+  "description": "This project aims to provide a NodeJS API to load and dump Unity YAML  files(configurations, prefabs, scenes, serialized data, etc) in the exact same  format the internal Unity YAML serializer does.",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zacharysnewman/unity-yaml-parser-js.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/zacharysnewman/unity-yaml-parser-js/issues"
+  },
+  "homepage": "https://github.com/zacharysnewman/unity-yaml-parser-js#readme"
 }
